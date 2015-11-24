@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using xNet.Net;
 
 namespace EndClothing
 {
@@ -55,6 +56,7 @@ namespace EndClothing
             try
             {
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+                httpWebRequest.UserAgent = HttpHelper.ChromeUserAgent();
                 httpWebRequest.AllowAutoRedirect = true;
                 httpWebRequest.Method = "GET";
 
@@ -123,12 +125,81 @@ namespace EndClothing
             return i.ToString();
         }
 
-        private void bn_start_Click(object sender, EventArgs e)
-        {
-            var url = "http://endclothing.com/";
-            var html = _getRequest(url, "");
 
+        string postRequest(string url, string post_data)
+        {
+
+            try
+            {
+                var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+
+                var data = Encoding.ASCII.GetBytes(post_data);
+
+                httpWebRequest.UserAgent = HttpHelper.ChromeUserAgent();
+                httpWebRequest.Method = "POST";
+                httpWebRequest.ContentLength = data.Length;
+                httpWebRequest.ContentType = "application/x-www-form-urlencoded";
+
+                using (var streamWriter = httpWebRequest.GetRequestStream())
+                {
+                    streamWriter.Write(data, 0, data.Length);
+                }
+
+                using (var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
+                {
+                    var responseString = new StreamReader(httpWebResponse.GetResponseStream()).ReadToEnd();
+
+                    string[] cookieVal = null;
+                    if (httpWebResponse.Headers["Set-Cookie"] != null)
+                        cookieVal = httpWebResponse.Headers["Set-Cookie"].Split(new char[] { ',' });
+
+                    CookieContainer cookie = new CookieContainer();
+
+                    try
+                    {
+                        foreach (string cook in cookieVal)
+                        {
+                            string[] cookie1 = cook.Split(new char[] { ';' });
+                            if (cookie1.Length < 2)
+                                continue;
+
+                            if (cookie1[0].IndexOf("=") < 0 || cookie1[1].IndexOf("=") < 0)
+                                continue;
+
+                            Cookie c = null;
+                            if (cookie1.Length >= 3)
+                                c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1], cookie1[1].Split(new char[] { '=' })[1]);
+                            if (cookie1.Length == 2)
+                                c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1]);
+
+                            cookie.Add(new Uri("https://bestsecret.com"), c);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("\nMessage ---\n{0}", e.Message);
+                    }
+                    //if (new_cookies == null)
+                    //    cookies = cookie;
+
+
+
+                    return responseString;
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+                return null;
+            }
+
+        }
+
+        void Get503Exception(string url)
+        {
             //var t,r,a,f, WOlLQxg={"xcWIr":
+            
+            var html = _getRequest(url, "");
 
             var t = GetFirstByRegex(@"[0-9\.]+", url).Length;
 
@@ -174,6 +245,14 @@ namespace EndClothing
                     p2i = Multiply(p2i, p2i_new);
             }
             p2i = Plus(p2i,t.ToString());
+        }
+
+
+        private void bn_start_Click(object sender, EventArgs e)
+        {
+            var url = "http://endclothing.com/";
+            //Get503Exception(url);
+            
             
         }
     }
