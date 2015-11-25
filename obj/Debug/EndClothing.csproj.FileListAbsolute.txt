@@ -7,3 +7,6 @@ c:\users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\obj\De
 c:\users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\obj\Debug\EndClothing.csproj.GenerateResource.Cache
 c:\users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\obj\Debug\EndClothing.exe
 c:\users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\obj\Debug\EndClothing.pdb
+C:\Users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\bin\Debug\HtmlAgilityPack.dll
+C:\Users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\bin\Debug\xNet.dll
+C:\Users\hz\documents\visual studio 2013\Projects\EndClothing\EndClothing\bin\Debug\xNet.xml

@@ -33,9 +33,9 @@
             // 
             // bn_start
             // 
-            this.bn_start.Location = new System.Drawing.Point(445, 118);
+            this.bn_start.Location = new System.Drawing.Point(813, 3);
             this.bn_start.Name = "bn_start";
-            this.bn_start.Size = new System.Drawing.Size(422, 205);
+            this.bn_start.Size = new System.Drawing.Size(192, 102);
             this.bn_start.TabIndex = 0;
             this.bn_start.Text = "START";
             this.bn_start.UseVisualStyleBackColor = true;

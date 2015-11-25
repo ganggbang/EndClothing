@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HtmlAgilityPack;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -12,14 +13,18 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using xNet.Net;
 
+
 namespace EndClothing
 {
     public partial class Form1 : Form
     {
+        CookieDictionary cookies;
+
         public Form1()
         {
             InitializeComponent();
         }
+
 
 
         string GetFirstByRegex(string pattern, string text)
@@ -58,6 +63,8 @@ namespace EndClothing
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
                 httpWebRequest.UserAgent = HttpHelper.ChromeUserAgent();
                 httpWebRequest.AllowAutoRedirect = true;
+                //if (cookies.Count > 0)
+                //    httpWebRequest.CookieContainer = cookies;
                 httpWebRequest.Method = "GET";
 
                 httpWebRequest.Referer = refer;
@@ -70,6 +77,11 @@ namespace EndClothing
 
                         using (var reader = new StreamReader(stream, Encoding.GetEncoding(httpWebResponse.CharacterSet)))
                         {
+
+                            string[] cookieVal = null;
+                            if (httpWebResponse.Headers["Set-Cookie"] != null)
+                                cookieVal = httpWebResponse.Headers["Set-Cookie"].Split(new char[] { ',' });
+                            GetCookies(cookieVal);
                             return reader.ReadToEnd();
                         }
                     }
@@ -125,75 +137,38 @@ namespace EndClothing
             return i.ToString();
         }
 
-
-        string postRequest(string url, string post_data)
+        CookieContainer GetCookies(string [] cookieVal)
         {
+            CookieContainer cookie = new CookieContainer();
 
             try
             {
-                var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
-
-                var data = Encoding.ASCII.GetBytes(post_data);
-
-                httpWebRequest.UserAgent = HttpHelper.ChromeUserAgent();
-                httpWebRequest.Method = "POST";
-                httpWebRequest.ContentLength = data.Length;
-                httpWebRequest.ContentType = "application/x-www-form-urlencoded";
-
-                using (var streamWriter = httpWebRequest.GetRequestStream())
+                foreach (string cook in cookieVal)
                 {
-                    streamWriter.Write(data, 0, data.Length);
-                }
+                    string[] cookie1 = cook.Split(new char[] { ';' });
+                    if (cookie1.Length < 2)
+                        continue;
 
-                using (var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
-                {
-                    var responseString = new StreamReader(httpWebResponse.GetResponseStream()).ReadToEnd();
+                    if (cookie1[0].IndexOf("=") < 0 || cookie1[1].IndexOf("=") < 0)
+                        continue;
 
-                    string[] cookieVal = null;
-                    if (httpWebResponse.Headers["Set-Cookie"] != null)
-                        cookieVal = httpWebResponse.Headers["Set-Cookie"].Split(new char[] { ',' });
+                    Cookie c = null;
+                    if (cookie1.Length >= 3)
+                        c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1], cookie1[1].Split(new char[] { '=' })[1]);
+                    if (cookie1.Length == 2)
+                        c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1]);
 
-                    CookieContainer cookie = new CookieContainer();
-
-                    try
-                    {
-                        foreach (string cook in cookieVal)
-                        {
-                            string[] cookie1 = cook.Split(new char[] { ';' });
-                            if (cookie1.Length < 2)
-                                continue;
-
-                            if (cookie1[0].IndexOf("=") < 0 || cookie1[1].IndexOf("=") < 0)
-                                continue;
-
-                            Cookie c = null;
-                            if (cookie1.Length >= 3)
-                                c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1], cookie1[1].Split(new char[] { '=' })[1]);
-                            if (cookie1.Length == 2)
-                                c = new Cookie(cookie1[0].Split(new char[] { '=' })[0], cookie1[0].Split(new char[] { '=' })[1]);
-
-                            cookie.Add(new Uri("https://bestsecret.com"), c);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("\nMessage ---\n{0}", e.Message);
-                    }
-                    //if (new_cookies == null)
-                    //    cookies = cookie;
-
-
-
-                    return responseString;
+                    cookie.Add(new Uri("https://bestsecret.com"), c);
                 }
             }
             catch (Exception e)
             {
-                MessageBox.Show(e.Message);
-                return null;
+                MessageBox.Show("\nMessage ---\n{0}", e.Message);
             }
-
+            return cookie;
         }
+
+
 
         void Get503Exception(string url)
         {
@@ -247,13 +222,152 @@ namespace EndClothing
             p2i = Plus(p2i,t.ToString());
         }
 
+        private string getRequest(string url, string refer)
+        {
+            try
+            {
+               
+                using (var request = new HttpRequest())
+                {
+                    string content;
+                    request.UserAgent = HttpHelper.ChromeUserAgent();
+                    request.Referer = refer;
+                    request.AllowAutoRedirect = true;
+                    request.Cookies = cookies;
+
+                    HttpResponse response = request.Get(url);
+
+
+                    var status = response.StatusCode.ToString();
+                    using (var responseStream = response.ToStream())
+                    {
+                        cookies = response.Cookies;
+                    }
+
+                    content = response.ToString();
+
+                    return content;
+
+                }
+            }
+            catch (WebException we)
+            {
+                var wRespStatusCode = ((HttpWebResponse)we.Response).StatusCode;
+                return wRespStatusCode.ToString();
+            }
+        }
+
+        private string postRequest(string url, string refer, string form_data)
+        {
+            try
+            {
+                using (var request = new HttpRequest())
+                {
+                    //form_key=uS3HD9QaXL8srTob&login%5Busername%5D=hasanqusay%40yahoo.com&login%5Bpassword%5D=3124681122Bh&send=
+                    //var multipartContent = new MultipartContent() {
+                    //    {new StringContent("form_key"), form_data},
+                    //    {new StringContent("login%5Busername%5D"), "hasanqusay%40yahoo.com"},
+                    //    {new StringContent("login%5Bpassword%5D"), "3124681122Bh"},
+                    //    {new StringContent("send"), " "}
+                    //};
+
+                    string content;
+                    request.UserAgent = HttpHelper.ChromeUserAgent();
+                    request.Referer = refer;
+
+                    request.AddParam("form_key", form_data)
+                        .AddParam("login%5Busername%5D", "hasanqusay@yahoo.com")
+                        .AddParam("login%5Bpassword%5D", "3124681122Bh")
+                        .AddParam("send", "");
+                    
+                    request.AllowAutoRedirect = true;
+                    request.Cookies = cookies;
+
+                    HttpResponse response = request.Post(url);
+
+
+                    var status = response.StatusCode.ToString();
+                    using (var responseStream = response.ToStream())
+                    {
+                        cookies = response.Cookies;
+                    }
+
+                    content = response.ToString();
+
+                    return content;
+
+                }
+            }
+            catch (WebException we)
+            {
+                var wRespStatusCode = ((HttpWebResponse)we.Response).StatusCode;
+                return wRespStatusCode.ToString();
+            }
+        }
+
+        string GetFormKey(string html, string xpath)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            
+            doc.LoadHtml(html);
+
+            var NodeCollections = doc.DocumentNode.SelectNodes(xpath);
+            if (NodeCollections != null)
+            {
+                foreach (HtmlNode node in NodeCollections)
+                {
+                    return GetFirstByRegex("\".*\"", GetFirstByRegex("value=\".*\"", node.OuterHtml)).Replace("\"", "");
+                }
+            }
+
+            return null;
+        }
+
+        List<String> GetWishList(string html, string xpath)
+        {
+            List<string> items = new List<string>();
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            
+            doc.LoadHtml(html);
+
+            var NodeCollections = doc.DocumentNode.SelectNodes(xpath);
+            if (NodeCollections != null)
+            {
+                foreach (HtmlNode node in NodeCollections)
+                {
+                }
+            }
+
+            return items;
+        }
+
 
         private void bn_start_Click(object sender, EventArgs e)
         {
-            var url = "http://endclothing.com/";
+            var url = "http://endclothing.com/us/";
             //Get503Exception(url);
+
+            var html = getRequest("http://www.endclothing.com/us/customer/account/login/", "");
+
+            var form_key = GetFormKey(html, "//input[@name='form_key']");
+            var content = postRequest("http://www.endclothing.com/us/customer/account/loginPost/", "http://www.endclothing.com/us/customer/account/login/", form_key );
             
-            
+            html = getRequest("http://www.endclothing.com/us/customer/account/", "http://www.endclothing.com/us/customer/account/loginPost/");
+
+            //string ID = "316082";
+            //var new_url = url + "wishlist/index/add/product/" + ID + "/" + form_key;
+
+
+            //GetWishList(getRequest("https://www.endclothing.com/us/wishlist/", url), "//table[@class='data-table']/tbody/tr/td/a");
+            GetWishList(getRequest("https://www.endclothing.com/us/wishlist/", url), "//table[@class='data-table']/tbody/tr/td/div/div[@class='add-to-cart-alt']/p[@class='availability out-of-stock']");
+
+            //getRequest("https://www.endclothing.com/us/wishlist/", url);
+
+
+            //html = getRequest("http://www.endclothing.com/us/customer/account/", "http://www.endclothing.com/us/customer/account/loginPost/");
+            //316082
+            //wishlist/index/add/product/ID/form_key/
         }
     }
 }
